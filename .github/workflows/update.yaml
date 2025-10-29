@@ -1,0 +1,102 @@
+name: Update versions
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Run every day at 18:30 UTC
+    - cron: '30 18 * * *'
+
+concurrency:
+  # Ensure this workflow does not run twice at the same time
+  group: ${{ github.workflow }}
+
+env:
+  CACHIX_CACHE: pesde
+
+jobs:
+  prepare:
+    name: Prepare new versions
+    runs-on: ubuntu-24.04
+
+    outputs:
+      updated_sha: ${{ steps.push.outputs.updated_sha }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cachix
+        uses: cachix/cachix-action@v15
+        with:
+          name: ${{ env.CACHIX_CACHE }}
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          pushFilter: "(-source$ | nixpkgs\\.tar\\.gz$)"
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Prepare new version
+        run: nix develop -c lune run scripts/update.luau
+
+      - name: Push to staging
+        id: push
+        run: |
+          old_head=$GITHUB_SHA
+          new_head=$(git rev-parse HEAD)
+
+          if [ "$old_head" != "$new_head" ]; then
+            echo "Pushing changes..."
+            git push origin HEAD:update-staging --force
+            echo "updated_sha=$new_head" >> "$GITHUB_OUTPUT"
+          else
+            echo "No changes."
+          fi
+
+  update:
+    name: Update versions (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
+    needs: prepare
+    if: needs.update.outputs.updated_sha != null
+
+    strategy:
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15, macos-15-intel]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cachix
+        uses: cachix/cachix-action@v15
+        with:
+          name: ${{ env.CACHIX_CACHE }}
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          pushFilter: "(-source$ | nixpkgs\\.tar\\.gz$)"
+
+      - name: Update versions
+        run: nix develop -c lune run scripts/update.luau --build --push-to-cachix
+
+      - name: Check if changes match
+        run: |
+          git fetch 
+          if [ "$expected_sha" != "$my_sha" ]; then
+            echo "Commits do not match!"
+            exit 1
+          fi
+
