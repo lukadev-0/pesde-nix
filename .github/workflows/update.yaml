@@ -84,8 +84,9 @@ jobs:
           pushFilter: "(-source$ | nixpkgs\\.tar\\.gz$)"
 
       - name: Update versions
+        env:
+          releases: ${{ needs.fetch.outputs.releases }}
         run: |
-          releases="${{ needs.fetch.outputs.releases }}"
           jq --compact-output '.[]' <<< "$releases"
           nix develop -c lune run scripts/update.luau --releases-stdin --build --push-to-cachix <<< "$releases"
 
