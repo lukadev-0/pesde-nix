@@ -335,9 +335,6 @@ end
 if #newReleases == 0 then
 	eprint("up to date")
 	exit(0)
-elseif FETCH_RELEASES then
-	print(serde.encode("json", newReleases))
-	exit(0)
 end
 
 eprint(`there are {#newReleases} new releases`)
@@ -410,38 +407,41 @@ for packageName, versions in releasesByPackage do
 		local release = versionEntry.release
 		local fetchedRelease = fetchedReleases[release.tag_name]
 
-		eprint("")
-		eprint(`-> {packageName} {version}`)
-
-		local generatedDir = VERSIONS_DIR .. `/{packageName}/_tmp_{version}`
-		fs.writeDir(generatedDir)
-		fs.writeDir(generatedDir .. "/crate")
-
-		exec("ln", { "-s", fetchedRelease.path, generatedDir .. "/source" })
-		exec(
-			"crate2nix",
-			{
-				"generate",
-				"--cargo-toml",
-				"source/Cargo.toml",
-				"--output",
-				"crate/Cargo.nix",
-				"--crate-hashes",
-				"crate/crate-hashes.json",
-			},
-			false,
-			{
-				cwd = generatedDir,
-			}
-		)
-
-		local cargoNixHash = exec("nix-hash", { "--type", "sha256", "--sri", generatedDir .. "/crate" }):gsub("%s$", "")
-		fs.removeDir(generatedDir)
-
 		local versionFilePath = VERSIONS_DIR .. `/{packageName}/{version}.nix`
-		local versionFile =
-			`\{ rev = "{fetchedRelease.rev}"; hash = "{fetchedRelease.hash}"; cargoNixHash = "{cargoNixHash}"; \}`
-		writeNixFile(versionFilePath, versionFile)
+		if not RELEASES_STDIN then
+			eprint("")
+			eprint(`-> {packageName} {version}`)
+
+			local generatedDir = VERSIONS_DIR .. `/{packageName}/_tmp_{version}`
+			fs.writeDir(generatedDir)
+			fs.writeDir(generatedDir .. "/crate")
+
+			exec("ln", { "-s", fetchedRelease.path, generatedDir .. "/source" })
+			exec(
+				"crate2nix",
+				{
+					"generate",
+					"--cargo-toml",
+					"source/Cargo.toml",
+					"--output",
+					"crate/Cargo.nix",
+					"--crate-hashes",
+					"crate/crate-hashes.json",
+				},
+				false,
+				{
+					cwd = generatedDir,
+				}
+			)
+
+			local cargoNixHash =
+				exec("nix-hash", { "--type", "sha256", "--sri", generatedDir .. "/crate" }):gsub("%s$", "")
+			fs.removeDir(generatedDir)
+
+			local versionFile =
+				`\{ rev = "{fetchedRelease.rev}"; hash = "{fetchedRelease.hash}"; cargoNixHash = "{cargoNixHash}"; \}`
+			writeNixFile(versionFilePath, versionFile)
+		end
 
 		local channels = {}
 		for chan, ver in releaseChannelsByPackage[packageName] do
@@ -462,37 +462,44 @@ for _, line in versionSummary do
 	eprint(line)
 end
 
-startSection("update manifest")
+if not RELEASES_STDIN then
+	startSection("update manifest")
 
-local manifestFile = ""
-manifestFile ..= "{"
-manifestFile ..= `owner = "{versionManifest.owner}";`
-manifestFile ..= `repo = "{versionManifest.repo}";`
-manifestFile ..= `latestTag = "{newReleases[#newReleases].tag_name}";`
-manifestFile ..= "packages = {"
-for packageName, channels in releaseChannelsByPackage do
-	manifestFile ..= `{packageName} = \{`
-	for channel, version in channels do
-		manifestFile ..= `{channel} = "{version}";`
+	local manifestFile = ""
+	manifestFile ..= "{"
+	manifestFile ..= `owner = "{versionManifest.owner}";`
+	manifestFile ..= `repo = "{versionManifest.repo}";`
+	manifestFile ..= `latestTag = "{newReleases[#newReleases].tag_name}";`
+	manifestFile ..= "packages = {"
+	for packageName, channels in releaseChannelsByPackage do
+		manifestFile ..= `{packageName} = \{`
+		for channel, version in channels do
+			manifestFile ..= `{channel} = "{version}";`
+		end
+		manifestFile ..= "};"
 	end
 	manifestFile ..= "};"
-end
-manifestFile ..= "};"
-manifestFile ..= "}"
+	manifestFile ..= "}"
 
-manifestFile = writeNixFile(VERSION_MANIFEST_PATH, manifestFile)
+	manifestFile = writeNixFile(VERSION_MANIFEST_PATH, manifestFile)
 
-eprint("")
-eprint(`written to {VERSION_MANIFEST_PATH}`)
-eprint(manifestFile)
+	eprint("")
+	eprint(`written to {VERSION_MANIFEST_PATH}`)
+	eprint(manifestFile)
 
-startSection("commit changes")
+	startSection("commit changes")
 
-if SKIP_COMMIT then
-	eprint(`{DIM}skipped{RESET}`)
-else
-	exec("git", { "add", "." })
-	exec("git", { "commit", "-m", "chore: update versions" })
+	if SKIP_COMMIT then
+		eprint(`{DIM}skipped{RESET}`)
+	else
+		exec("git", { "add", "." })
+		exec("git", { "commit", "-m", "chore: update versions" })
+	end
+
+	if FETCH_RELEASES then
+		print(serde.encode("json", newReleases))
+		exit(0)
+	end
 end
 
 if not DO_BUILD then
