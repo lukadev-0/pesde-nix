@@ -10,7 +10,6 @@
 }:
 
 let
-  versionManifest = import ../versions/manifest.nix;
   drv = (
     cargoNix.workspaceMembers.pesde.build.override {
       features = [
@@ -20,13 +19,6 @@ let
       ]
       ++ features
       ++ lib.optional withVersionManagement "version-management";
-
-      crateOverrides = defaultCrateOverrides // {
-        pesde = x: {
-          CARGO_BIN_NAME = "pesde";
-          repository = "https://github.com/${versionManifest.owner}/${versionManifest.repo}";
-        };
-      };
     }
   );
 in
