@@ -85,6 +85,10 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
           skipPush: true
 
+      - name: Install extra dependencies
+        if: matrix.os == 'macos-15' || matrix.os == 'macos-15-intel'
+        run: brew install openssl@3
+
       - name: Update versions
         env:
           releases: ${{ needs.fetch.outputs.releases }}
