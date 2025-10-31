@@ -38,7 +38,7 @@ jobs:
         with:
           name: ${{ env.CACHIX_CACHE }}
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
-          pushFilter: "(-source$ | nixpkgs\\.tar\\.gz$)"
+          skipPush: true
 
       - name: Configure Git
         run: |
@@ -47,8 +47,10 @@ jobs:
 
       - name: Fetch releases
         id: fetch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          releases="$(nix develop -c lune run scripts/update.luau --fetch-releases)"
+          releases="$(cachix watch-exec $CACHIX_CACHE -- nix develop -c lune run scripts/update.luau --fetch-releases)"
           if [ -n "$releases" ]; then
             echo "releases=$releases" >> "$GITHUB_OUTPUT"
             git push --force origin HEAD:update-staging
@@ -81,14 +83,14 @@ jobs:
         with:
           name: ${{ env.CACHIX_CACHE }}
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
-          pushFilter: "(-source$ | nixpkgs\\.tar\\.gz$)"
+          skipPush: true
 
       - name: Update versions
         env:
           releases: ${{ needs.fetch.outputs.releases }}
         run: |
           jq --compact-output '.[]' <<< "$releases"
-          nix develop -c lune run scripts/update.luau --releases-stdin --build --push-to-cachix <<< "$releases"
+          cachix watch-exec $CACHIX_CACHE -- nix develop -c lune run scripts/update.luau --releases-stdin --build --push-to-cachix <<< "$releases"
 
   push:
     name: Push changes
