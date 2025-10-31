@@ -85,9 +85,12 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
           skipPush: true
 
-      - name: Uninstall OpenSSL
-        if: matrix.os == 'macos-15' || matrix.os == 'macos-15-intel'
-        run: brew uninstall openssl@3
+      - name: Install extra dependencies
+        if: matrix.os == 'macos-15'
+        run: |
+          ls -l /opt/homebrew/opt/openssl@3/lib
+          brew reinstall openssl@3
+          ls -l /opt/homebrew/opt/openssl@3/lib
 
       - name: Update versions
         env:
