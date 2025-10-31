@@ -121,8 +121,10 @@
                 pkgs.buildRustCrate.override {
                   defaultCrateOverrides = pkgs.defaultCrateOverrides // {
                     openssl-sys = attrs: {
-                      OPENSSL_LIB_DIR = "${pkgs.openssl.out}/lib";
-                      OPENSSL_INCLUDE_DIR = "${pkgs.openssl.dev}/include";
+                      preConfigure = ''
+                        export OPENSSL_LIB_DIR="${pkgs.openssl.out}/lib"
+                        export OPENSSL_INCLUDE_DIR="${pkgs.openssl.dev}/include"
+                      '';
                     };
                   };
                 };
