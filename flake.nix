@@ -180,6 +180,9 @@
         // pesde-registry
         // lib.optionalAttrs pkgs.stdenv.isLinux (pesde-fhs)
         // lib.optionalAttrs (system == "x86_64-linux") (pesde-registry-static // pesde-registry-docker)
+        // {
+          default = pesde.pesde;
+        }
       );
 
       checks = eachSystem (
