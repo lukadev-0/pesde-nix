@@ -585,7 +585,7 @@ exec("cachix", pushArgs)
 
 for i, path in paths do
 	local pathInfo = buildDrvsInfo[i]
-	local pinName = `{pathInfo.name}@{pathInfo.version}`
+	local pinName = `{pathInfo.name}-{pathInfo.version}-{process.os}-{process.arch}`
 
 	local pinArgs = { "pin", CACHIX_CACHE, pinName, path, "--keep-revisions", "1" }
 	for _, artifact in PACKAGE_ARTIFACTS[pathInfo.name] or {} do
