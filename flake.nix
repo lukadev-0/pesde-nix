@@ -122,7 +122,7 @@
                   defaultCrateOverrides = pkgs.defaultCrateOverrides // {
                     openssl-sys = attrs: {
                       OPENSSL_LIB_DIR = "${pkgs.openssl.dev}/lib";
-                      OPENSSL_INCLUDE_DIR = "${pkgs.openssl.dev}/includeA";
+                      OPENSSL_INCLUDE_DIR = "${pkgs.openssl.dev}/include";
                     };
                   };
                 };
