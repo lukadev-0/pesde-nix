@@ -161,9 +161,8 @@
         pesde
         // pesde-full
         // pesde-registry
-        // pesde-registry-static
-        // pesde-registry-docker
         // lib.optionalAttrs pkgs.stdenv.isLinux (pesde-fhs)
+        // lib.optionalAttrs (system == "x86_64-linux") (pesde-registry-static // pesde-registry-docker)
       );
 
       checks = eachSystem (
@@ -180,13 +179,14 @@
             pesde
             pesde-full
             pesde-registry
-            pesde-registry-static
-            pesde-registry-docker
             ;
         }
-        // pkgs.lib.optionalAttrs pkgs.stdenv.isLinux ({
+        // pkgs.lib.optionalAttrs pkgs.stdenv.isLinux {
           inherit pesde-fhs;
-        })
+        }
+        // pkgs.lib.optionalAttrs (system == "x86_64-linux") {
+          inherit pesde-registry-static pesde-registry-docker;
+        }
       );
 
       devShells = eachSystem (

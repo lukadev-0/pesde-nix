@@ -29,6 +29,8 @@ local PACKAGE_ARTIFACTS = {
 }
 local PACKAGES_ONLY_LINUX = {
 	["pesde-fhs"] = true,
+}
+local PACKAGES_ONLY_LINUX_X64 = {
 	["pesde-registry-static"] = true,
 	["pesde-registry-docker"] = true,
 }
@@ -515,12 +517,19 @@ startSection("build new packages")
 local buildArgs = { "build", "--json", "--print-build-logs", "--no-link" }
 local buildDrvsInfo = {}
 
+local function shouldBuildPackage(name: string)
+	if process.os == "linux" then
+		return process.arch == "x86_64" or not PACKAGES_ONLY_LINUX_X64[name]
+	end
+	return not PACKAGES_ONLY_LINUX[name]
+end
+
 for packageName, versions in releasesByPackage do
 	for _, versionEntry in versions do
 		local version = versionEntry.version
 		local versionName = version:gsub("%.", "_")
 
-		if process.os == "linux" or not PACKAGES_ONLY_LINUX[packageName] then
+		if shouldBuildPackage(packageName) then
 			table.insert(buildArgs, `.#{packageName}_{versionName}`)
 			table.insert(buildDrvsInfo, {
 				name = packageName,
@@ -530,7 +539,7 @@ for packageName, versions in releasesByPackage do
 
 		for _, variant in PACKAGE_VARIANTS[packageName] do
 			local packageNameWithVariant = `{packageName}-{variant}`
-			if process.os == "linux" or not PACKAGES_ONLY_LINUX[packageNameWithVariant] then
+			if shouldBuildPackage(packageNameWithVariant) then
 				table.insert(buildArgs, `.#{packageNameWithVariant}_{versionName}`)
 				table.insert(buildDrvsInfo, {
 					name = packageNameWithVariant,
