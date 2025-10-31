@@ -518,10 +518,13 @@ local buildArgs = { "build", "--json", "--print-build-logs", "--no-link" }
 local buildDrvsInfo = {}
 
 local function shouldBuildPackage(name: string)
-	if process.os == "linux" then
-		return process.arch == "x86_64" or not PACKAGES_ONLY_LINUX_X64[name]
+	if PACKAGES_ONLY_LINUX_X64[name] then
+		return process.os == "linux" and process.arch == "x86_64"
 	end
-	return not PACKAGES_ONLY_LINUX[name]
+	if PACKAGES_ONLY_LINUX[name] then
+		return process.os == "linux"
+	end
+	return true
 end
 
 for packageName, versions in releasesByPackage do
