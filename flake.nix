@@ -115,24 +115,15 @@
                 ln -s "${src}" "$out/source"
                 echo "import ./crate/Cargo.nix" > "$out/default.nix"
               '';
-
-              buildRustCrateForPkgs =
-                pkgs:
-                pkgs.buildRustCrate.override {
-                  defaultCrateOverrides = pkgs.defaultCrateOverrides // {
-                    openssl-sys = attrs: {
-                      preConfigure = ''
-                        export OPENSSL_LIB_DIR="${pkgs.openssl.out}/lib"
-                        export OPENSSL_INCLUDE_DIR="${pkgs.openssl.dev}/include"
-                      '';
-                    };
-                  };
-                };
             in
             pkgs'.callPackage base (
               {
-                cargoNix = pkgs'.callPackage generated {
-                  inherit buildRustCrateForPkgs;
+                cargoNix = pkgs'.callPackage generated { };
+                defaultCrateOverrides = pkgs'.defaultCrateOverrides // {
+                  openssl-sys = attrs: {
+                    OPENSSL_LIB_DIR = "${pkgs'.openssl.out}/lib";
+                    OPENSSL_INCLUDE_DIR = "${pkgs'.openssl.dev}/include";
+                  };
                 };
               }
               // overrides
